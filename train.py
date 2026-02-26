@@ -1,6 +1,8 @@
 import os
 import sys
 import time
+import math
+from dataclasses import asdict
 
 import torch
 import torch.nn as nn
@@ -27,6 +29,32 @@ def _build_optimizer(model, lr):
         return torch.optim.AdamW(model.parameters(), lr=lr, fused=True)
     except (TypeError, RuntimeError):
         return torch.optim.AdamW(model.parameters(), lr=lr)
+
+
+def _build_scheduler(optimizer, params, total_steps):
+    if params.scheduler_type == "none":
+        return None
+    if params.scheduler_type != "cosine":
+        raise ValueError(f"Unsupported scheduler_type: {params.scheduler_type}")
+
+    warmup_steps = max(0, min(params.warmup_steps, max(0, total_steps - 1)))
+
+    def lr_lambda(step):
+        if total_steps <= 0:
+            return 1.0
+        if warmup_steps > 0 and step < warmup_steps:
+            return float(step + 1) / float(warmup_steps)
+
+        if total_steps <= warmup_steps:
+            return 1.0
+
+        decay_steps = total_steps - warmup_steps
+        progress = min(1.0, max(0.0, (step - warmup_steps) / decay_steps))
+        min_lr_ratio = params.min_learn_rate / params.learn_rate
+        cosine = 0.5 * (1.0 + math.cos(math.pi * progress))
+        return min_lr_ratio + (1.0 - min_lr_ratio) * cosine
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
 
 
 def print_system_info(loader_len):
@@ -69,6 +97,8 @@ def train(params=None):
     print_system_info(len(loader))
 
     optimizer = _build_optimizer(model, params.learn_rate)
+    total_steps = len(loader) * params.epochs
+    scheduler = _build_scheduler(optimizer, params, total_steps)
     os.makedirs(params.checkpoint_dir, exist_ok=True)
 
     for epoch in range(params.epochs):
@@ -84,6 +114,8 @@ def train(params=None):
             loss.backward()
             norm = nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
+            if scheduler is not None:
+                scheduler.step()
 
             if params.device == "cuda":
                 torch.cuda.synchronize()
@@ -92,9 +124,11 @@ def train(params=None):
             if index % params.log_every == 0:
                 dt = (t1 - t0) * 1000
                 tok_per_sec = (params.batch_size * params.context_size) / (t1 - t0)
+                curr_lr = optimizer.param_groups[0]["lr"]
                 print(
                     f"epoch {epoch}, iter {index}, norm {norm:.4f}, "
-                    f"loss: {loss.item():.4f}, time: {dt:.2f}ms, tok/sec: {tok_per_sec:.2f}"
+                    f"lr: {curr_lr:.6e}, loss: {loss.item():.4f}, "
+                    f"time: {dt:.2f}ms, tok/sec: {tok_per_sec:.2f}"
                 )
 
             should_save = (
@@ -109,8 +143,12 @@ def train(params=None):
                     {
                         "epoch": epoch,
                         "batch": index,
+                        "config": asdict(params),
                         "model_state_dict": model.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
+                        "scheduler_state_dict": scheduler.state_dict()
+                        if scheduler is not None
+                        else None,
                         "loss": loss,
                     },
                     ckpt_path,

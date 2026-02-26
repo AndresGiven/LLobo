@@ -12,7 +12,10 @@ class Hyperparameters:
     num_kv_groups: int = num_heads
     dropout: float = 0.0
     learn_rate: float = 2e-4
+    min_learn_rate: float = 2e-5
     epochs: int = 3
+    warmup_steps: int = 200
+    scheduler_type: str = "none"  # options: "none", "cosine"
     device: str = "cuda"
     grad_cp: bool = True
     log_every: int = 1
