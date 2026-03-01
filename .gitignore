@@ -1,3 +1,5 @@
+.vscode/
+private/
 data/
 models/
 __pycache__

@@ -64,10 +64,10 @@ def generate(model, input_ids, max_new_tokens, context_size, temperature, top_k)
 def main():
     parser = argparse.ArgumentParser(description="Generate text from a trained LLobo model checkpoint.")
     parser.add_argument("--checkpoint", required=True, help="Path to .pth checkpoint")
-    parser.add_argument("--prompt", default="<USER> Hello\n<BOT>", help="Prompt text")
+    parser.add_argument("--prompt", default="commercial", help="Prompt text")
     parser.add_argument("--max-new-tokens", type=int, default=120)
     parser.add_argument("--temperature", type=float, default=0.8)
-    parser.add_argument("--top-k", type=int, default=50)
+    parser.add_argument("--top-k", type=int, default=128)
     parser.add_argument(
         "--seed",
         type=int,
