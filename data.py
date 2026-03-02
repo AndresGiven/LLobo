@@ -43,12 +43,16 @@ class TokenDataset(Dataset):
         self.context_size = context_size
 
     def __len__(self):
-        return len(self.data) - self.context_size - 1
+        usable = len(self.data) - self.context_size - 1
+        if usable < 0:
+            return 0
+        return (usable // self.context_size) + 1
 
     def __getitem__(self, index):
+        start = index * self.context_size
         return (
-            self.data[index : index + self.context_size],
-            self.data[index + 1 : index + self.context_size + 1],
+            self.data[start : start + self.context_size],
+            self.data[start + 1 : start + self.context_size + 1],
         )
 
 
@@ -72,12 +76,16 @@ class ShardedTokenDataset(Dataset):
         self.context_size = context_size
         self.dtype = _dtype_from_string(dtype_str)
         self.shards = [np.memmap(p, dtype=self.dtype, mode="r") for p in shard_paths]
-        self.usable = [
-            max(0, len(s) - self.context_size - 1) for s in self.shards
-        ]
-        self.cum = np.cumsum(self.usable)
+        self.samples_per_shard = [self._count_samples(len(shard)) for shard in self.shards]
+        self.cum = np.cumsum(self.samples_per_shard)
         if len(self.cum) == 0 or self.cum[-1] <= 0:
             raise ValueError("Shards are too small for the configured context_size.")
+
+    def _count_samples(self, shard_len):
+        usable = shard_len - self.context_size - 1
+        if usable < 0:
+            return 0
+        return (usable // self.context_size) + 1
 
     def __len__(self):
         return int(self.cum[-1])
@@ -91,8 +99,9 @@ class ShardedTokenDataset(Dataset):
     def __getitem__(self, index):
         shard_idx, local = self._locate(index)
         shard = self.shards[shard_idx]
-        x = shard[local : local + self.context_size]
-        y = shard[local + 1 : local + self.context_size + 1]
+        start = local * self.context_size
+        x = shard[start : start + self.context_size]
+        y = shard[start + 1 : start + self.context_size + 1]
         return torch.from_numpy(np.array(x)), torch.from_numpy(np.array(y))
 
 

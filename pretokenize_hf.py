@@ -29,7 +29,7 @@ def main():
     parser.add_argument("--text-field", default="content")
     parser.add_argument("--out-dir", default="data/shards")
     parser.add_argument("--vocab-size", type=int, default=50260)
-    parser.add_argument("--shard-size", type=int, default=800_000_000)
+    parser.add_argument("--shard-size", type=int, default=400_000_000)
     parser.add_argument("--max-samples", type=int, default=None)
     parser.add_argument("--max-tokens", type=int, default=None)
     parser.add_argument("--filter-field", default=None)
