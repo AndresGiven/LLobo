@@ -127,5 +127,5 @@ if __name__ == "__main__":
     main()
 
 
-#py -3.10 inference.py --checkpoint models\model8b_i1000_l5.0084_cosine.pth --prompt "test" --max-new-tokens 120 --temperature 0.8 --top-k 50
+#py -3.10 inference.py --checkpoint models\model8b_i236000_l3.5015.pth --prompt "Hey!" --max-new-tokens 512 --temperature 0.8
 #python inference.py --checkpoint models\your_checkpoint.pth --num-embd 1600 --num-heads 4 --num-transformers 12 --context-size 1024

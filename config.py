@@ -18,11 +18,11 @@ class Hyperparameters:
     scheduler_type: str = "none"  # options: "none", "cosine"
     device: str = "cuda"
     grad_cp: bool = True
-    log_every: int = 1
+    log_every: int = 10
     save_every: int = 4000
     data_path: str = "data/data.txt"
     tokens_dir: str = "data/shards"
     tokens_dtype: str = "uint16"  # "uint16" or "uint32"
     use_pretokenized: bool = True
     checkpoint_dir: str = "models"
-    resume_checkpoint: str = "Model_Path" #Model path
+    resume_checkpoint: str = "" #Model path
